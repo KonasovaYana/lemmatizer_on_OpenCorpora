@@ -20,7 +20,25 @@ RULES_INFINITIVE = [
     (r'лась$', 'ться'), (r'лась$', 'тись'), (r'лась$', 'чься'), ('есть', 'быть')
 ]
 
+ADJECTIVE_ENDINGS = [
+    r'ый$', r'ий$', r'ой$', r'ая$', r'яя$',
+    r'ое$', r'ее$', r'ые$', r'ие$', r'ого$', r'его$',
+    r'ой$', r'ей$', r'ых$', r'их$', r'ому$', r'ему$', 
+    r'ую$', r'юю$', r'ым$', r'им$', r'ыми$', r'ими$', 
+    r'ом$', r'ем$', r'юща$', r'ья$', r'енный$', r'яя$',
+    r'ее$', r'ей$', r'ейш$', r'айш$',          
+]
+
 VERB_TAGS = ['VERB', 'GRND', 'PRTF', 'PRTS']
+
+def unknown_word(lemma, rules=RULES_INFINITIVE, adj_rules=ADJECTIVE_ENDINGS):
+    for not_inf, inf in rules:
+        if re.search(not_inf, lemma.lower()) or re.search(inf, lemma.lower()):
+            return "VERB"
+    for end in adj_rules:
+        if re.search(end, lemma.lower()):
+            return "ADJS"
+    return "NOUN"
 
 def word_in_dict(word, dictionary):
     word_lower = word.lower()
@@ -92,8 +110,8 @@ def evaluate_on_syntagrus(sentences_data, dictionary, mapping):
             
             pred_pos_ud_list = []
             for pos_oc in pred_pos_list:
-                if pos_oc is None:
-                    pos_oc = 'unknown'
+                if pos_oc  == 'unknown':
+                    pos_oc = unknown_word(word.lower().replace('ё', 'е'))
                 if pos_oc in mapping:
                     possible_tags = mapping[pos_oc]
                     if isinstance(possible_tags, list):
@@ -143,7 +161,6 @@ def evaluate_on_syntagrus(sentences_data, dictionary, mapping):
 
     if pos_errors:
         total_pos_errors = len(pos_errors)
-        error_percent = total_pos_errors / total_tokens * 100
         for true_tag, error_count in sorted(pos_error_by_tag.items(), key=lambda x: x[1], reverse=True):
             tag_error_percent = error_count / total_pos_errors * 100
             print(f"  {true_tag:6}: {error_count:5d} ошибок ({tag_error_percent:5.1f}% от всех ошибок)")
@@ -202,7 +219,8 @@ def lemmatize_and_tagging(sentense_of_tokens, dictionary):
                 lemma = normalize_verb_lemma(lemma, pos, dictionary, RULES_INFINITIVE)
                 formatted_tokens.append(f"{sentense_of_tokens[sentense][token]}{{{lemma.lower()}={pos}}}")
             else:
-                formatted_tokens.append(f"{sentense_of_tokens[sentense][token]}{{{word}=unknown}}") 
+                pos = unknown_word(lemma)
+                formatted_tokens.append(f"{sentense_of_tokens[sentense][token]}{{{word}={pos}}}") 
         result_sentences.append(" ".join(formatted_tokens))
     return result_sentences
 
